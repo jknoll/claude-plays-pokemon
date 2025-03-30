@@ -238,14 +238,16 @@ class ServerAgent:
         self.message_history = [{"role": "user", "content": "You may now begin playing."}]
         self.max_history = max_history
         self.text_map = ""
+        self.current_location = ""
+        self.target_location = ""
+        self.navigation_instructions = ""
+        
         # Set display configuration with defaults
         self.display_config = display_config or {
             'show_game_state': False,
             'show_collision_map': False,
             'quiet_mode': False
         }
-        self.current_location = ""
-        self.target_location = ""
         
         # SLAM map disabled
         # self.slam_map = SLAMMap(canvas_size=(5000, 5000), initial_offset=(2500, 2500))
@@ -266,13 +268,16 @@ Current Location: {current_location}
 Target Location: {target_location}
 Current Map Description: {text_map}
 
+Navigation Instructions:
+{navigation_instructions}
+
 Game Progression Strategy:
 1. Always work towards reaching the target location
 2. Use the navigation tool to move efficiently in the overworld
 3. Interact with NPCs and objects that might help progress the story
 
 Before each action:
-1. Check if you're moving towards your target location
+1. You may check if you're moving towards your target location using the navigation instructions, but these instructions are not always accurate.
 2. Consider what obstacles might be in your way
 3. Use the Text Map to understand your surroundings
 4. Explain your reasoning, then execute your chosen commands
@@ -424,15 +429,15 @@ The summary should be comprehensive enough that you can continue gameplay withou
             logger.info(f"New Target: {target}")
             logger.info("-" * 50)
             
-            # Get navigation instructions to new target
-            navigation_instructions = self.get_navigation_instructions()
+            # Get and store navigation instructions to new target
+            self.navigation_instructions = self.get_navigation_instructions()
             
             # Log the full navigation plan
             logger.info("Navigation Plan Updated:")
             logger.info("=" * 50)
             logger.info(f"Current Location: {self.current_location}")
             logger.info(f"Target Location: {target}")
-            logger.info(f"Navigation Instructions:\n{navigation_instructions}")
+            logger.info(f"Navigation Instructions:\n{self.navigation_instructions}")
             logger.info("=" * 50)
 
     def process_tool_call(self, tool_call):
@@ -673,11 +678,12 @@ The summary should be comprehensive enough that you can continue gameplay withou
                     if len(messages) >= 5 and messages[-3]["role"] == "user" and isinstance(messages[-3]["content"], list) and messages[-3]["content"]:
                         messages[-3]["content"][-1]["cache_control"] = {"type": "ephemeral"}
 
-                # Create system prompt with current text map and location info
+                # Create system prompt with current text map, location info, and navigation instructions
                 system_prompt = self.SYSTEM_PROMPT.format(
                     text_map=self.text_map,
                     current_location=self.current_location,
-                    target_location=self.target_location
+                    target_location=self.target_location,
+                    navigation_instructions=self.navigation_instructions
                 )
                 
 
